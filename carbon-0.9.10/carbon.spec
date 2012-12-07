@@ -9,7 +9,7 @@
 
 Name:           carbon
 Version:        0.9.10
-Release:        1
+Release:        1.2%{dist}
 Summary:        Backend data caching and persistence daemon for Graphite
 Group:          Applications/Internet
 License:        Apache Software License 2.0
@@ -30,7 +30,7 @@ BuildArch:      noarch
 
 BuildRequires:  python python-devel python-setuptools
 Requires:       python whisper
-Requires:       python-twisted-core >= 8.0
+Requires:       python-twisted-core >= 8.2
 
 %description
 The backend for Graphite. Carbon is a data collection and storage agent.  
@@ -84,8 +84,46 @@ CFLAGS="$RPM_OPT_FLAGS" %{__python} -c 'import setuptools; execfile("setup.py")'
     -s /sbin/nologin -c "Carbon cache daemon" %{name}
 exit 0
 
+%post
+##while this seems a bit overkill, it's to handle the yum upgrade case and preserve running/not running state
+for service in %{name}-aggregator %{name}-cache
+do
+chkconfig --add $service
+if [ $1 -gt 1 ]; then
+    # restart service if it was running
+    if %{__service} $service status > /dev/null 2>&1; then
+        echo "Restarting $service service because it was running."
+        if ! %{__service} $service restart ; then
+                logger -s -t "$service" -- "Installation failure. Not able to restart the service."
+                exit 1
+        fi
+    else
+        echo "Starting ${name}"
+        if ! %{__service} $service start ; then
+                logger -s -t "$service" -- "Installation failure. Not able to start the service."
+                exit 1
+        fi
+    fi
+else
+#go ahead and start it if we didn't hit the above case - we chkconfig'd it on after all.
+        echo "Starting ${name}"
+        if ! %{__service} $service start ; then
+                logger -s -t "$service" -- "Installation failure. Not able to start the service."
+                exit 1
+        fi
+fi
+done
+
 %preun
-%{__service} %{name} stop
+#final uninstall will stop service now, update keeps service running to remember service state for restart in post
+for service in %{name}-aggregator %{name}-cache
+do
+if [ $1 = 0 ]; then
+        %{__service} $service stop
+        #do this in pre, not post - it errors if the init.d script has been removed
+        chkconfig --del $service
+fi
+done
 exit 0
 
 %postun
@@ -126,6 +164,13 @@ exit 0
 %ghost %{_localstatedir}/run/%{name}-aggregator.pid
 
 %changelog
+* Fri Nov 30 2012 David Raistrick <keen99@gmail.com) - 0.9.10-1.2
+- add chkconfig for services on install/uninstall, add service stop/start and support upgrade
+- only doing carbon-cache and carbon-aggregator right now
+
+* Mon Nov 26 2012 David Raistrick <keen99@gmail.com) - 0.9.10-1.1
+- enforce twisted => 8.2 as required for carbon...
+
 * Fri Jun 1 2012 Ben P <ben@g.megatron.org> - 0.9.10-1
 - New upstream version.
 
