@@ -5,7 +5,7 @@
 
 Name:           graphite-web
 Version:        0.9.10
-Release:        3
+Release:        3.1%{dist}
 Summary:        Enterprise scalable realtime graphing
 Group:          Applications/Internet
 License:        Apache License
@@ -22,7 +22,9 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 BuildRequires:  python python-devel python-setuptools
 Requires:       Django django-tagging httpd mod_wsgi pycairo python-simplejson
+##whatever this is doesnt work... so hardcode it
 %{?el5:Requires: python-sqlite2}
+Requires: python-sqlite2
 %{?el6:Requires: bitmap-fonts-compat}
 
 %description
@@ -118,6 +120,9 @@ CFLAGS="$RPM_OPT_FLAGS" %{__python} -c 'import setuptools; execfile("setup.py")'
 %ghost %{_localstatedir}/lib/%{name}/graphite.db
 
 %changelog
+* Mon Nov 26 2012 David Raistrick <keen99@gmai.com> - 0.9.10-3.1
+- force req for python-sqlite2
+
 * Thu Oct 4 2012 Dan Carley <dan.carley@gmail.com> - 0.9.10-3
 - Require bitmap-fonts on EL6 to resolve MemoryError exception on render.
 
